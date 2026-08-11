@@ -29,7 +29,7 @@ if (-not (Get-Command cl.exe -ErrorAction SilentlyContinue)) {
     }
 }
 
-nvcc -arch=sm_86 $srcFile -o $outFile
+nvcc -arch=sm_86 -lcublas $srcFile -o $outFile
 if ($LASTEXITCODE -ne 0) {
     exit $LASTEXITCODE
 }
