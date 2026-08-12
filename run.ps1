@@ -4,13 +4,17 @@ param(
 )
 
 $srcFile = Join-Path $PSScriptRoot "src\$Name.cu"
-$outFile = Join-Path $PSScriptRoot "src\$Name.exe"
-$expFile = Join-Path $PSScriptRoot "src\$Name.exp"
-$libFile = Join-Path $PSScriptRoot "src\$Name.lib"
+$outputDir = Join-Path $PSScriptRoot "output"
+$outFile = Join-Path $outputDir "$Name.exe"
+$ncuLog = Join-Path $outputDir "$Name.ncu.log"
 
 if (-not (Test-Path $srcFile)) {
     Write-Error "File not found: $srcFile"
     exit 1
+}
+
+if (-not (Test-Path $outputDir)) {
+    New-Item -ItemType Directory -Path $outputDir | Out-Null
 }
 
 if (-not (Get-Command cl.exe -ErrorAction SilentlyContinue)) {
@@ -37,7 +41,13 @@ if ($LASTEXITCODE -ne 0) {
 & $outFile
 $exitCode = $LASTEXITCODE
 
-# clean up scrap build files
-Remove-Item -Path $outFile, $expFile, $libFile -ErrorAction SilentlyContinue
+# profile with Nsight Compute, if available -- run after the normal timed
+# execution above so ncu's instrumentation overhead doesn't affect that number
+if (Get-Command ncu -ErrorAction SilentlyContinue) {
+    Write-Host "`n--- ncu profile (log: $ncuLog) ---"
+    ncu --set basic -f --log-file $ncuLog $outFile
+} else {
+    Write-Warning "ncu not found on PATH -- skipping profiling. Install Nsight Compute (bundled with the CUDA toolkit) to enable it."
+}
 
 exit $exitCode
